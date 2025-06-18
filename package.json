@@ -1,0 +1,14 @@
+{
+  "name": "node-red-ros2-graph",
+  "version": "1.0.0",
+  "description": "",
+  "node-red": {
+    "nodes": {
+      "ros-node": "node/ros-node.js",
+      "ros-topic": "topic/ros-topic.js"
+    }
+  },
+  "dependencies": {
+    "ws": "^8.18.2"
+  }
+}

@@ -1,0 +1,78 @@
+<script type="text/javascript">
+    RED.nodes.registerType('ros-topic',{
+        category: 'function',
+        color: '#a6bbcf',
+        defaults: {
+            name: {value:""}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.svg",
+        label: function() {
+            return this.name||"ros-topic";
+        },
+
+        // oneditsave: function() {
+        //     const count = parseInt($("#num_inputs").val(), 10);
+        //     this.outputs = count;
+        // },
+
+        oneditprepare: function () {
+            const select = $("#package");
+            select.prop("disabled", true);
+            select.append(`<option>Loading...</option>`);
+
+            $.getJSON("ros_topic/list_packages", function (data) {
+                select.empty();
+                data.forEach(opt => {
+                    select.append(`<option value="${opt}">${opt}</option>`);
+                });
+                select.prop("disabled", false);
+            });
+
+            select.on("change", function () {
+                const selectedPackage = $(this).val();
+                console.log("Selected package:", selectedPackage);
+
+                $.getJSON(`ros_topic/list_interfaces?package=${encodeURIComponent(selectedPackage)}`, function (data) {
+                    const nodeSelect = $("#interface");
+                    nodeSelect.empty();
+                    data.forEach(item => {
+                        nodeSelect.append(`<option value="${item}">${item}</option>`);
+                    });
+                });
+            });
+
+        }
+
+    });
+</script>
+
+<script type="text/html" data-template-name="ros-topic">
+    
+    <div class="form-row">
+        <label for="num_inputs"><i class="fa fa-tag"></i> Inputs</label>
+        <input type="number" id="num_inputs" name="numinputs" placeholder="1"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="topic"><i class="fa fa-tag"></i> Package</label>
+        <input type="text" id="topic" name="node-input-package" placeholder="topic"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="package"><i class="fa fa-tag"></i> Package</label>
+        <select id="package" name="package" placeholder="Package"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="interface"><i class="fa fa-tag"></i> Node</label>
+        <select id="interface" name="interface" placeholder="Interface"></select>
+    </div>
+
+
+</script>
+
+<script type="text/html" data-help-name="ros-topic">
+    <p>A simple node that converts the message payloads into all lower-case characters</p>
+</script>

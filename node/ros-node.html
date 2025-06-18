@@ -1,0 +1,63 @@
+<script type="text/javascript">
+    RED.nodes.registerType('ros-node',{
+        category: 'function',
+        color: '#a6bbcf',
+        defaults: {
+            name: {value:""}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.svg",
+        label: function() {
+            return this.name||"ros-node";
+        },
+
+        oneditprepare: function () {
+            console.log("getting dropdown inputs");
+            const select = $("#node-input-package");
+            select.prop("disabled", true);
+            select.append(`<option>Loading...</option>`);
+
+            $.getJSON("ros-node/options", function (data) {
+                select.empty();
+                data.forEach(opt => {
+                    select.append(`<option value="${opt}">${opt}</option>`);
+                });
+                select.prop("disabled", false);
+            });
+
+            select.on("change", function () {
+                const selectedPackage = $(this).val();
+                console.log("Selected package:", selectedPackage);
+
+                $.getJSON(`ros-node/nodes?package=${encodeURIComponent(selectedPackage)}`, function (data) {
+                    const nodeSelect = $("#node-input-node");
+                    nodeSelect.empty();
+                    data.forEach(item => {
+                        nodeSelect.append(`<option value="${item}">${item}</option>`);
+                    });
+                });
+            });
+
+        }
+
+    });
+</script>
+
+<script type="text/html" data-template-name="ros-node">
+    
+    <div class="form-row">
+        <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
+        <select id="node-input-package" name="node-input-package" placeholder="PKG"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-node"><i class="fa fa-tag"></i> Node</label>
+        <select id="node-input-node" name="node-input-node" placeholder="NODE"></select>
+    </div>
+
+</script>
+
+<script type="text/html" data-help-name="ros-node">
+    <p>A simple node that converts the message payloads into all lower-case characters</p>
+</script>
