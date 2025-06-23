@@ -3,7 +3,9 @@
         category: 'function',
         color: '#a6bbcf',
         defaults: {
-            name: {value:""}
+            id: { value: "" },
+            package: {value:""},
+            node: {value:""},
         },
         inputs: 1,
         outputs: 1,
@@ -12,52 +14,76 @@
             return this.name||"ros-node";
         },
 
-        oneditprepare: function () {
-            console.log("getting dropdown inputs");
-            const select = $("#node-input-package");
-            select.prop("disabled", true);
-            select.append(`<option>Loading...</option>`);
+        oneditprepare: function () 
+        {
+            // unique id for this node, generates only once upon creating the node, stays same across deploys
+            if (!this.id) {
+                // lets make it 32bit the chance for colision between ids should be really small
+                const id = Math.floor(Math.random() * 2 ** 32).toString(36);
+                $("#node-input-id").val(id);
+            }
 
-            $.getJSON("ros-node/options", function (data) {
-                select.empty();
-                data.forEach(opt => {
-                    select.append(`<option value="${opt}">${opt}</option>`);
+            // package select menu
+            const package_select = $("#node-input-package");
+            $.getJSON("ros-node/list_packages", (packages_list) => 
+            {
+                // make sure to not erase previously selected value
+                const selected_package = this.package;
+
+                package_select.empty();
+                packages_list.forEach(item => 
+                {
+                    const selected = (item === selected_package) ? "selected" : "";
+                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
                 });
-                select.prop("disabled", false);
+                
+                package_select.trigger("change");
             });
 
-            select.on("change", function () {
-                const selectedPackage = $(this).val();
-                console.log("Selected package:", selectedPackage);
+            // on package change update nodes list
+            package_select.on("change", () => 
+            {
+                const node_select = $("#node-input-node");
+                const selected_package = package_select.val() ? package_select.val() : this.package;
 
-                $.getJSON(`ros-node/nodes?package=${encodeURIComponent(selectedPackage)}`, function (data) {
-                    const nodeSelect = $("#node-input-node");
-                    nodeSelect.empty();
-                    data.forEach(item => {
-                        nodeSelect.append(`<option value="${item}">${item}</option>`);
+                $.getJSON(`ros-node/list_nodes?package=${encodeURIComponent(selected_package)}`, (nodes_list) => 
+                {
+                    const selected_node = this.node;
+
+                    node_select.empty();
+                    nodes_list.forEach(item => 
+                    {
+                        const selected = (item === selected_node) ? "selected" : "";
+                        node_select.append(`<option value="${item}" ${selected}>${item}</option>`);
                     });
                 });
             });
-
         }
-
     });
 </script>
 
 <script type="text/html" data-template-name="ros-node">
     
+    <input type="hidden" id="node-input-id">
+
     <div class="form-row">
         <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
-        <select id="node-input-package" name="node-input-package" placeholder="PKG"></select>
+        <select id="node-input-package" placeholder="Package"></select>
     </div>
 
     <div class="form-row">
         <label for="node-input-node"><i class="fa fa-tag"></i> Node</label>
-        <select id="node-input-node" name="node-input-node" placeholder="NODE"></select>
+        <select id="node-input-node" placeholder="Node"></select>
+    </div>
+
+    <div class="form-row">
+        <label>Logs</label>
+        <textarea readonly id="node-input-log-area" style="width: 100%; height: 200px;">
+        </textarea>
     </div>
 
 </script>
 
 <script type="text/html" data-help-name="ros-node">
-    <p>A simple node that converts the message payloads into all lower-case characters</p>
+    <p>Node description</p>
 </script>

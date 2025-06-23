@@ -3,7 +3,11 @@
         category: 'function',
         color: '#a6bbcf',
         defaults: {
-            name: {value:""}
+            id: { value: "" },
+            topic: {value:""},
+            package: {value:""},
+            interface: {value:""},
+            log: {value: ""}
         },
         inputs: 1,
         outputs: 1,
@@ -12,37 +16,59 @@
             return this.name||"ros-topic";
         },
 
-        // oneditsave: function() {
-        //     const count = parseInt($("#num_inputs").val(), 10);
-        //     this.outputs = count;
-        // },
 
-        oneditprepare: function () {
-            const select = $("#package");
-            select.prop("disabled", true);
-            select.append(`<option>Loading...</option>`);
+        oneditprepare: function () 
+        {
+            // unique id for this node, generates only once upon creating the node, stays same across deploys
+            if (!this.id) {
+                // lets make it 32bit the chance for colision between ids should be really small
+                const id = Math.floor(Math.random() * 2 ** 32).toString(36);
+                $("#node-input-id").val(id);
+            }
 
-            $.getJSON("ros_topic/list_packages", function (data) {
-                select.empty();
-                data.forEach(opt => {
-                    select.append(`<option value="${opt}">${opt}</option>`);
+            // package select menu
+            const package_select = $("#node-input-package");
+            $.getJSON("ros-topic/list-packages", (packages_list) => 
+            {
+                // make sure to not erase previously selected value
+                const selected_package = this.package;
+
+                package_select.empty();
+                packages_list.forEach(item => 
+                {
+                    const selected = (item === selected_package) ? "selected" : "";
+                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
                 });
-                select.prop("disabled", false);
+                
+                package_select.trigger("change");
             });
 
-            select.on("change", function () {
-                const selectedPackage = $(this).val();
-                console.log("Selected package:", selectedPackage);
+            // on package change update intefaces list
+            package_select.on("change", () => 
+            {
+                const interface_select = $("#node-input-interface");
+                const selected_package = package_select.val() ? package_select.val() : this.package;
 
-                $.getJSON(`ros_topic/list_interfaces?package=${encodeURIComponent(selectedPackage)}`, function (data) {
-                    const nodeSelect = $("#interface");
-                    nodeSelect.empty();
-                    data.forEach(item => {
-                        nodeSelect.append(`<option value="${item}">${item}</option>`);
+                $.getJSON(`ros-topic/list-interfaces?package=${encodeURIComponent(selected_package)}`, (interfaces_list) => 
+                {
+                    console.log(interfaces_list);
+
+                    const selected_interface = this.interface;
+
+                    interface_select.empty();
+                    interfaces_list.forEach(item => 
+                    {
+                        const selected = (item === selected_interface) ? "selected" : "";
+                        interface_select.append(`<option value="${item}" ${selected}>${item}</option>`);
                     });
                 });
             });
 
+            // topic listener update
+            $.get("ros-topic/get-log", (log) =>
+            {
+                $("#node-input-log").val(log);
+            });
         }
 
     });
@@ -50,29 +76,31 @@
 
 <script type="text/html" data-template-name="ros-topic">
     
+    <input type="hidden" id="node-input-id">
+
     <div class="form-row">
-        <label for="num_inputs"><i class="fa fa-tag"></i> Inputs</label>
-        <input type="number" id="num_inputs" name="numinputs" placeholder="1"></select>
+        <label for="node-input-topic"><i class="fa fa-tag"></i> Package</label>
+        <input id="node-input-topic" type="text" placeholder="topic"></select>
     </div>
 
     <div class="form-row">
-        <label for="topic"><i class="fa fa-tag"></i> Package</label>
-        <input type="text" id="topic" name="node-input-package" placeholder="topic"></select>
+        <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
+        <select id="node-input-package" placeholder="Package"></select>
     </div>
 
     <div class="form-row">
-        <label for="package"><i class="fa fa-tag"></i> Package</label>
-        <select id="package" name="package" placeholder="Package"></select>
+        <label for="node-input-interface"><i class="fa fa-tag"></i> Node</label>
+        <select id="node-input-interface" placeholder="Interface"></select>
     </div>
 
     <div class="form-row">
-        <label for="interface"><i class="fa fa-tag"></i> Node</label>
-        <select id="interface" name="interface" placeholder="Interface"></select>
+        <label>Logs</label>
+        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
+        </textarea>
     </div>
-
 
 </script>
 
 <script type="text/html" data-help-name="ros-topic">
-    <p>A simple node that converts the message payloads into all lower-case characters</p>
+    <p>Node description</p>
 </script>

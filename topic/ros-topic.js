@@ -1,112 +1,101 @@
-module.exports = function(RED) {
-
-    // var is_web_api = require('is-web-api').ros2;
+module.exports = function(RED) 
+{
+    var is_web_api = require('is-web-api').ros2;
 
     function RosTopic(config) {
         RED.nodes.createNode(this,config);
         const node = this;
-        node.on('input', function(msg) {
-            msg.payload = msg.payload.toLowerCase();
-            node.send(msg);
+
+        // add type
+        const interface_name = config.interface.slice(config.interface.lastIndexOf("/") + 1);
+        const interface_path = get_interface_path(config.package, interface_name);
+        const folder_path = interface_path.slice(0, interface_path.lastIndexOf("/"));
+        is_web_api.add_custom_ros2_type(config.package, interface_name, folder_path);
+
+        // subsribe
+        is_web_api.add_subscriber(config.id, config.topic, config.package + "/" + interface_name, []);
+        node.log = "";
+
+        // triggers once every node has completed its construction
+        RED.events.once("flows:started", function() 
+        {
+            let {color, message, event_emitter} = is_web_api.launch(config['id']);
+
+            // ros2 input
+            if (event_emitter)
+            {
+                event_emitter.on(config.topic + "_data", (msg_json) =>
+                {
+                    node.log = node.log + msg_json.msg?.data + "\n";
+                });
+            }
+
         });
 
-        RED.events.once("flows:started", function() {
-            
-            const msg = {
-                _msgid: RED.util.generateId(),
-                payload: "Hello from MyStartupSenderNode! Flow deployed at " + new Date().toLocaleString(),
-                topic: "node_startup_event",
-            };
-            node.send(msg);
-            console.log("message has been sent");
-            node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
-
+        RED.httpAdmin.get("/ros-topic/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
+        {
+            res.send(node.log);
         });
-
-
-        // console.log("here");
-
-        // // 1. Set DDS domain (optional)
-        // is_web_api.set_dds_domain(0);  // if needed
-
-        // is_web_api.add_ros2_type("interfaces", "msg/NodeRedCommand");
-
-        // // 2. Add publisher client
-        // const publisher_id = 'publisher1';
-        // const topic_name = '/topic';
-        // const message_type = 'interfaces/msg/NodeRedCommand';
-
-        // let result = is_web_api.add_publisher(publisher_id, topic_name, message_type, []);
-        // if (result.color === "red") {
-        //     console.error("Error:", result.message);
-        //     process.exit(1);
-        // }
-
-        // // 3. Launch IS for this client
-        // is_web_api.launch(config['id']);
-
-        // // 4. Wait briefly, then send request
-        // setTimeout(() => {
-        //     const msg = {
-        //         manager_id: 1,
-        //         message_type: 42,
-        //         data: 'hello world'
-        //     };
-
-        //     is_web_api.send_message(topic_name, msg);
-        //     console.log("Published message:", msg);
-        // }, 1000);
-
     }
-
 
     RED.nodes.registerType("ros-topic", RosTopic);
 
-    RED.httpAdmin.get("/ros_topic/list_packages", RED.auth.needsPermission("ros-topic.read"), function (req, res) {
-
-
+    RED.httpAdmin.get("/ros-topic/list-packages", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
+    {
         const { exec } = require("child_process");
         const cmd = `python3 -c "import json; from ament_index_python.packages import get_packages_with_prefixes; print(json.dumps(list(get_packages_with_prefixes().keys())))"`;
 
-        exec(cmd, 
-            (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Exec error: ${error.message}`);
-                    return res.status(500).json({ error: "Python execution failed" });
-                }
+        exec(cmd, (error, stdout, stderr) => 
+        {
+            if (error) {
+                console.error(`Exec error: ${error.message}`);
+                return res.status(500).json({ error: "Python execution failed" });
+            }
 
-                try {
-                    const packages = JSON.parse(stdout);
-                    res.json(packages);
-                } catch (err) {
-                    console.error("JSON parse error:", err);
-                    res.status(500).json({ error: "Invalid JSON output" });
-                }
+            try {
+                const packages = JSON.parse(stdout);
+                res.json(packages);
+            }
+            catch (err) {
+                console.error("JSON parse error:", err);
+                res.status(500).json({ error: "Invalid JSON output" });
+            }
         });
     });
 
-    RED.httpAdmin.get("/ros_topic/list_interfaces", RED.auth.needsPermission("ros-topic.read"), function (req, res) {
-
+    RED.httpAdmin.get("/ros-topic/list-interfaces", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
+    {
         const selectedPackage = req.query.package;
 
         const { exec } = require("child_process");
         const cmd = `python3 -c "import json; from rosidl_runtime_py import get_message_interfaces; print(json.dumps(get_message_interfaces(['${selectedPackage}'])['${selectedPackage}']))"`;
 
-        exec(cmd, 
-            (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Exec error: ${error.message}`);
-                    return res.status(500).json({ error: "Python execution failed" });
-                }
+        exec(cmd, (error, stdout, stderr) => 
+        {
+            if (error) {
+                console.error(`Exec error: ${error.message}`);
+                return res.status(500).json({ error: "Python execution failed" });
+            }
 
-                try {
-                    const packages = JSON.parse(stdout);
-                    res.json(packages);
-                } catch (err) {
-                    console.error("JSON parse error:", err);
-                    res.status(500).json({ error: "Invalid JSON output" });
-                }
+            try {
+                const packages = JSON.parse(stdout);
+                res.json(packages);
+            } 
+            catch (err) {
+                console.error("JSON parse error:", err);
+                res.status(500).json({ error: "Invalid JSON output" });
+            }
         });
     });
 
+    function get_interface_path(package, interface)
+    {
+        const { execSync } = require("child_process");
+
+        const package_name = package + "/msg/" + interface;
+        const cmd = `python3 -c "from rosidl_runtime_py import get_interface_path; print(get_interface_path('${package_name}'))"`;
+
+        const stdout = execSync(cmd, {encoding: "utf8"}); 
+        return stdout;
+    }
 }

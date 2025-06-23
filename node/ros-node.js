@@ -1,63 +1,43 @@
-module.exports = function(RED) {
-    
-    var WebSocket = require('ws');
+module.exports = function(RED) 
+{
     var is_web_api = require('is-web-api').ros2;
+    var events = require('events');
 
     function RosNode(config) {
         RED.nodes.createNode(this,config);
         const node = this;
 
+        // join commands topic
+        const interface_path = get_interface_path("node_manager", "NodeRedCommand");
+        const folder_path = interface_path.slice(0, interface_path.lastIndexOf("/"));
+        is_web_api.add_custom_ros2_type("node_manager", "NodeRedCommand", folder_path);
 
-        // 1. Set DDS domain (optional)
-        is_web_api.set_dds_domain(0);  // if needed
+        const topic_name = "management/commands";
+        const message_type = "node_manager/NodeRedCommand";
+        let result = is_web_api.add_publisher(config.id, topic_name, message_type, []);
 
-        // is_web_api.add_ros2_type("interfaces", "msg/NodeRedCommand");
-        is_web_api.add_custom_ros2_type("interfaces", "NodeRedCommand", "/home/daniel/ros2_ws/install/interfaces/share/interfaces/msg");
 
-        // 2. Add publisher client
-        const publisher_id = "publisher";
-        const topic_name = 'management/commands';
-        const message_type = 'interfaces/NodeRedCommand';
-
-        let result = is_web_api.add_publisher(publisher_id, topic_name, message_type, []);
-        if (result.color === "red") {
-            console.error("Error:", result.message);
-            process.exit(1);
-        }
-
-        // 3. Launch IS for this client
-        is_web_api.launch(config['id']);
-
-        // 4. Wait briefly, then send request
-        setTimeout(() => {
+        node.on('input', function(m) 
+        {
             const msg = {
-                manager_id: 1, 
+                manager_id: 1,
+                node_id: config.id,
                 message_type: 0, 
-                package_name: 'demo_nodes_cpp', 
-                node_name: 'talker', 
-                data: 'whatever'
+                package_name: config.package, 
+                node_name: config.node, 
+                data: "whatever"
             };
 
-            is_web_api.send_message(topic_name, msg);
-            console.log("Published message:", msg);
-        }, 5000);
+            is_web_api.send_message("management/commands", msg);
+
+            node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
+        });
 
 
-        // node.on('input', function(msg) {
-        //     console.log("message received");
-        //     node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
-
-        //     const ws = new WebSocket("ws://localhost:8080");
-        //     ws.onopen = () => {
-        //         console.log('Connected!');
-        //     };
-
-        //     setTimeout(() => {
-        //         console.log("This runs after 2 seconds");
-        //         ws.send('Hello, WebSocket!');
-        //     }, 2000);
-
-        // });
+        RED.events.once('flows:started', function() 
+        {
+            let {color, message, event_emitter} = is_web_api.launch(config['id']);
+        })
 
         // node.on('close', function(done) {
         //     node.status({ fill: "grey", shape: "dot", text: "fu" });
@@ -66,10 +46,11 @@ module.exports = function(RED) {
         // });
 
     }
+
     RED.nodes.registerType("ros-node", RosNode);
 
-    RED.httpAdmin.get("/ros-node/options", RED.auth.needsPermission("ros-node.read"), function (req, res) {
-
+    RED.httpAdmin.get("/ros-node/list_packages", RED.auth.needsPermission("ros-node.read"), function (req, res) 
+    {
         const { exec } = require("child_process");
         const cmd = `python3 -c "import json; from ament_index_python.packages import get_packages_with_prefixes; print(json.dumps(sorted(list(get_packages_with_prefixes().keys()))))"`;
 
@@ -90,8 +71,8 @@ module.exports = function(RED) {
         });
     });
 
-    RED.httpAdmin.get("/ros-node/nodes", RED.auth.needsPermission("ros-node.read"), function (req, res) {
-
+    RED.httpAdmin.get("/ros-node/list_nodes", RED.auth.needsPermission("ros-node.read"), function (req, res) 
+    {
         const selectedPackage = req.query.package;
 
         const { exec } = require("child_process");
@@ -114,5 +95,14 @@ module.exports = function(RED) {
         });
     });
 
+    function get_interface_path(package, interface)
+    {
+        const { execSync } = require("child_process");
 
+        const package_name = package + "/msg/" + interface;
+        const cmd = `python3 -c "from rosidl_runtime_py import get_interface_path; print(get_interface_path('${package_name}'))"`;
+
+        const stdout = execSync(cmd, {encoding: "utf8"}); 
+        return stdout;
+    }
 }
