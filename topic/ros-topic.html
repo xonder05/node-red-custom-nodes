@@ -3,7 +3,6 @@
         category: 'function',
         color: '#a6bbcf',
         defaults: {
-            id: { value: "" },
             topic: {value:""},
             package: {value:""},
             interface: {value:""},
@@ -19,13 +18,6 @@
 
         oneditprepare: function () 
         {
-            // unique id for this node, generates only once upon creating the node, stays same across deploys
-            if (!this.id) {
-                // lets make it 32bit the chance for colision between ids should be really small
-                const id = Math.floor(Math.random() * 2 ** 32).toString(36);
-                $("#node-input-id").val(id);
-            }
-
             // package select menu
             const package_select = $("#node-input-package");
             $.getJSON("ros-topic/list-packages", (packages_list) => 
@@ -76,8 +68,6 @@
 
 <script type="text/html" data-template-name="ros-topic">
     
-    <input type="hidden" id="node-input-id">
-
     <div class="form-row">
         <label for="node-input-topic"><i class="fa fa-tag"></i> Package</label>
         <input id="node-input-topic" type="text" placeholder="topic"></select>

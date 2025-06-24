@@ -1,5 +1,5 @@
 {
-  "name": "node-red-ros2-graph",
+  "name": "node-red-custom-nodes",
   "version": "1.0.0",
   "description": "",
   "node-red": {
@@ -9,6 +9,6 @@
     }
   },
   "dependencies": {
-    "ws": "^8.18.2"
+    "is-web-api": "^1.0.1"
   }
 }

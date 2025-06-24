@@ -7,6 +7,9 @@ module.exports = function(RED)
         RED.nodes.createNode(this,config);
         const node = this;
 
+        // slice only the node id without subflows
+        node.node_id = node.id.slice(node.id.lastIndexOf("-") + 1)
+
         // join commands topic
         const interface_path = get_interface_path("node_manager", "NodeRedCommand");
         const folder_path = interface_path.slice(0, interface_path.lastIndexOf("/"));
@@ -14,37 +17,54 @@ module.exports = function(RED)
 
         const topic_name = "management/commands";
         const message_type = "node_manager/NodeRedCommand";
-        let result = is_web_api.add_publisher(config.id, topic_name, message_type, []);
+        let result = is_web_api.add_publisher(node.id, topic_name, message_type, []);
 
+        // join topic with node's stdout
+        is_web_api.add_ros2_type("std_msgs", "String", []);
 
-        node.on('input', function(m) 
-        {
-            const msg = {
-                manager_id: 1,
-                node_id: config.id,
-                message_type: 0, 
-                package_name: config.package, 
-                node_name: config.node, 
-                data: "whatever"
-            };
-
-            is_web_api.send_message("management/commands", msg);
-
-            node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
-        });
-
+        // subsribe
+        is_web_api.add_subscriber(config.id, "management/stdout/id_" + node.node_id, "std_msgs/String", []);
+        node.log = "";
 
         RED.events.once('flows:started', function() 
         {
             let {color, message, event_emitter} = is_web_api.launch(config['id']);
+
+            if (event_emitter) 
+            {
+                event_emitter.on("management/stdout/id_" + node.node_id + "_data", (msg_json) =>
+                {
+                    node.log = node.log + msg_json.msg?.data + "\n";
+                });
+            }
+
+            setTimeout(() => 
+            {
+                const msg = {
+                    manager_id: 1,
+                    node_id: "id_" + node.node_id,
+                    message_type: 0, 
+                    package_name: config.package, 
+                    node_name: config.node, 
+                    data: "whatever"
+                };
+                is_web_api.send_message("management/commands", msg);
+                node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
+            
+            }, 5000);
         })
 
-        // node.on('close', function(done) {
-        //     node.status({ fill: "grey", shape: "dot", text: "fu" });
-        //     node.log("MyStartupSenderNode is closing down.");
-        //     done(); // Call done() when cleanup is complete
-        // });
+        RED.httpAdmin.get("/ros-node/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
+        {
+            res.send(node.log);
+        });
 
+        node.on('close', function(done) 
+        {
+            is_web_api.stop();
+            // node.status({ fill: "grey", shape: "dot", text: "" });
+            done();
+        });
     }
 
     RED.nodes.registerType("ros-node", RosNode);

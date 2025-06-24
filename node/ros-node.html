@@ -3,9 +3,9 @@
         category: 'function',
         color: '#a6bbcf',
         defaults: {
-            id: { value: "" },
             package: {value:""},
             node: {value:""},
+            log: {value: ""}
         },
         inputs: 1,
         outputs: 1,
@@ -16,13 +16,6 @@
 
         oneditprepare: function () 
         {
-            // unique id for this node, generates only once upon creating the node, stays same across deploys
-            if (!this.id) {
-                // lets make it 32bit the chance for colision between ids should be really small
-                const id = Math.floor(Math.random() * 2 ** 32).toString(36);
-                $("#node-input-id").val(id);
-            }
-
             // package select menu
             const package_select = $("#node-input-package");
             $.getJSON("ros-node/list_packages", (packages_list) => 
@@ -58,14 +51,18 @@
                     });
                 });
             });
+
+            // topic listener update
+            $.get("ros-node/get-log", (log) =>
+            {
+                $("#node-input-log").val(log);
+            });
         }
     });
 </script>
 
 <script type="text/html" data-template-name="ros-node">
     
-    <input type="hidden" id="node-input-id">
-
     <div class="form-row">
         <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
         <select id="node-input-package" placeholder="Package"></select>
@@ -78,7 +75,7 @@
 
     <div class="form-row">
         <label>Logs</label>
-        <textarea readonly id="node-input-log-area" style="width: 100%; height: 200px;">
+        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
         </textarea>
     </div>
 

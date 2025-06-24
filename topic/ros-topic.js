@@ -6,6 +6,9 @@ module.exports = function(RED)
         RED.nodes.createNode(this,config);
         const node = this;
 
+        // slice only the node id without subflows
+        node.node_id = node.id.slice(node.id.lastIndexOf("-") + 1)
+
         // add type
         const interface_name = config.interface.slice(config.interface.lastIndexOf("/") + 1);
         const interface_path = get_interface_path(config.package, interface_name);
@@ -13,7 +16,7 @@ module.exports = function(RED)
         is_web_api.add_custom_ros2_type(config.package, interface_name, folder_path);
 
         // subsribe
-        is_web_api.add_subscriber(config.id, config.topic, config.package + "/" + interface_name, []);
+        is_web_api.add_subscriber(node.node_id, config.topic, config.package + "/" + interface_name, []);
         node.log = "";
 
         // triggers once every node has completed its construction
@@ -35,6 +38,13 @@ module.exports = function(RED)
         RED.httpAdmin.get("/ros-topic/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
         {
             res.send(node.log);
+        });
+
+        node.on('close', function(done) 
+        {
+            is_web_api.stop();
+            // node.status({ fill: "grey", shape: "dot", text: "" });
+            done();
         });
     }
 
