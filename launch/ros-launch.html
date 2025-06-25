@@ -1,0 +1,92 @@
+<script type="text/javascript">
+    RED.nodes.registerType('ros-launch', {
+        category: 'function',
+        color: '#a6bbcf',
+        defaults: {
+            package: {value: ""},
+            launch: {value: ""},
+            log: {value: ""}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.png",
+        label: function () {
+            return this.name || "ros-launch";
+        },
+
+        oneditprepare: function () 
+        {
+            // package select menu
+            const package_select = $("#node-input-package");
+            $.getJSON("ros-launch/list_packages", (packages_list) => 
+            {
+                // make sure to not erase previously selected value
+                const selected_package = this.package;
+
+                package_select.empty();
+                packages_list.forEach(item => 
+                {
+                    const selected = (item === selected_package) ? "selected" : "";
+                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
+                });
+                
+                package_select.trigger("change");
+            });
+
+            // on package change update nodes list
+            package_select.on("change", () => 
+            {
+                const launch_select = $("#node-input-launch");
+                const selected_package = package_select.val() ? package_select.val() : this.package;
+
+                $.getJSON(`ros-launch/list-launch?package=${encodeURIComponent(selected_package)}`, (launch_list) => 
+                {
+                    console.log("got response");
+                    console.log(launch_list);
+                    const selected_launch = this.launch;
+
+                    launch_select.empty();
+                    launch_list.forEach(item => 
+                    {
+                        const selected = (item === selected_launch) ? "selected" : "";
+                        console.log("appending");
+                        console.log(item);
+                        launch_select.append(`<option value="${item}" ${selected}>${item}</option>`);
+                    });
+                    console.log("done");
+                });
+            });
+
+            // topic listener update
+            $.get("ros-launch/get-log", (log) =>
+            {
+                $("#node-input-log").val(log);
+            });
+        }
+
+    });
+</script>
+
+<script type="text/html" data-template-name="ros-launch">
+    
+    <div class="form-row">
+        <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
+        <select id="node-input-package" placeholder="Package"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-launch"><i class="fa fa-tag"></i>Launch</label>
+        <select id="node-input-launch" placeholder="Launch"></select>
+    </div>
+
+    <div class="form-row">
+        <label>Logs</label>
+        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
+        </textarea>
+    </div>
+
+</script>
+
+<script type="text/html" data-help-name="ros-launch">
+    <p>Node description</p>
+</script>

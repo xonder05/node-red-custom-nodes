@@ -5,7 +5,8 @@
   "node-red": {
     "nodes": {
       "ros-node": "node/ros-node.js",
-      "ros-topic": "topic/ros-topic.js"
+      "ros-topic": "topic/ros-topic.js",
+      "ros-launch": "launch/ros-launch.js"
     }
   },
   "dependencies": {
