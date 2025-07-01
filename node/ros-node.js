@@ -40,13 +40,27 @@ module.exports = function(RED)
 
             setTimeout(() => 
             {
+                const param_json = '[' + 
+                                    config.param.split('\n')
+                                                .map(line => '\"' + line + '\"')
+                                                .join(',') 
+                                   + "]";
+
+
+                const remap_json = '[' + 
+                                    config.remap.split('\n')
+                                                .map(line => '\"' + line + '\"')
+                                                .join(',');
+                                   + ']';
+
                 const msg = {
                     manager_id: 1,
-                    node_id: "id_" + node.node_id,
                     message_type: 0, 
+                    node_id: "id_" + node.node_id,
                     package_name: config.package, 
                     node_name: config.node, 
-                    data: "whatever"
+                    param_json: param_json,
+                    remap_json: remap_json
                 };
                 is_web_api.send_message("management/commands", msg);
                 node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });

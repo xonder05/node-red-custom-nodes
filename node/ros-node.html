@@ -5,6 +5,8 @@
         defaults: {
             package: {value:""},
             node: {value:""},
+            param: {value: ""},
+            remap: {value: ""},
             log: {value: ""}
         },
         inputs: 1,
@@ -57,7 +59,8 @@
             {
                 $("#node-input-log").val(log);
             });
-        }
+        },
+
     });
 </script>
 
@@ -74,7 +77,19 @@
     </div>
 
     <div class="form-row">
-        <label>Logs</label>
+        <label for="node-input-param">Params</label>
+        <textarea id="node-input-param" style="width: 100%; height: 200px;">
+        </textarea>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-remap">Remaps</label>
+        <textarea id="node-input-remap" style="width: 100%; height: 200px;">
+        </textarea>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-log">Logs</label>
         <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
         </textarea>
     </div>
