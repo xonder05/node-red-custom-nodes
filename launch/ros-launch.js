@@ -25,9 +25,9 @@ module.exports = function(RED)
         is_web_api.add_subscriber(config.id, "management/stdout/id_" + node.node_id, "std_msgs/String", []);
         node.log = "";
 
-        RED.events.once('flows:started', function() 
+        RED.events.once("flows:started", function() 
         {
-            let {color, message, event_emitter} = is_web_api.launch(config['id']);
+            let {color, message, event_emitter} = is_web_api.launch(config["id"]);
 
             if (event_emitter) 
             {
@@ -58,7 +58,7 @@ module.exports = function(RED)
             res.send(node.log);
         });
 
-        node.on('close', function(done) 
+        node.on("close", function(done) 
         {
             is_web_api.stop();
             done();

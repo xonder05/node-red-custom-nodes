@@ -1,6 +1,6 @@
 module.exports = function(RED) 
 {
-    var is_web_api = require('is-web-api').ros2;
+    var is_web_api = require("is-web-api").ros2;
 
     function RosTopic(config) {
         RED.nodes.createNode(this,config);
@@ -22,7 +22,7 @@ module.exports = function(RED)
         // triggers once every node has completed its construction
         RED.events.once("flows:started", function() 
         {
-            let {color, message, event_emitter} = is_web_api.launch(config['id']);
+            let {color, message, event_emitter} = is_web_api.launch(config["id"]);
 
             // ros2 input
             if (event_emitter)
@@ -40,7 +40,7 @@ module.exports = function(RED)
             res.send(node.log);
         });
 
-        node.on('close', function(done) 
+        node.on("close", function(done) 
         {
             is_web_api.stop();
             // node.status({ fill: "grey", shape: "dot", text: "" });
