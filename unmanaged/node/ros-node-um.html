@@ -1,0 +1,38 @@
+<script type="text/javascript">
+    
+    // $("<style>").html(`
+    //     #red-ui-palette-container-hidden {
+    //         display: none;
+    //     }
+    // `).appendTo(document.head);
+    
+    RED.nodes.registerType("ros-node-um", {
+        category: "hidden",
+        color: "#a6bbcf",
+        defaults: {
+            name: {value: ""},
+            button_state: {value: true},
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.png",
+        label: function () {
+            return this.name || "ros-node-um";
+        },
+
+    });
+</script>
+
+<script type="text/html" data-template-name="ros-node-um">
+    
+    <div class="form-row">
+        <label>Logs</label>
+        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
+        </textarea>
+    </div>
+
+</script>
+
+<script type="text/html" data-help-name="ros-node-um">
+    <p>Node description</p>
+</script>

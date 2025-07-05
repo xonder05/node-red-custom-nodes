@@ -1,8 +1,7 @@
 module.exports = function(RED) 
 {
-    var is_web_api = require('is-web-api').ros2;
-    var events = require('events');
-
+    var is_web_api = require("is-web-api").ros2;
+    
     function RosNode(config) {
         RED.nodes.createNode(this,config);
         const node = this;

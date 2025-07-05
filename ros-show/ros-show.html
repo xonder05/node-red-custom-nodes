@@ -1,0 +1,56 @@
+<script type="text/javascript">
+    
+    RED.nodes.registerType("ros-show", {
+        category: "ROS2",
+        color: "#a6bbcf",
+        defaults: {
+            button_state: {value: true},
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.png",
+        label: function () {
+            return this.name || "ros-show";
+        },
+
+        button: 
+        {
+            toggle: "button_state",
+
+            onclick: function () 
+            {
+                if (!this.button_state)
+                {
+                    console.log("calling backend");
+                    $.get("/ros-show/spawn-nodes", (ret) => 
+                    {
+                        // location.reload();
+                    });
+                }
+                else
+                {
+                    $.get("/ros-show/despawn_nodes", (ret) => 
+                    {
+                        // location.reload();
+                    });
+                } 
+
+            }
+        }
+
+    });
+</script>
+
+<script type="text/html" data-template-name="ros-show">
+    
+    <div class="form-row">
+        <label>Logs</label>
+        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
+        </textarea>
+    </div>
+
+</script>
+
+<script type="text/html" data-help-name="ros-show">
+    <p>Node description</p>
+</script>

@@ -6,10 +6,13 @@
     "nodes": {
       "ros-node": "node/ros-node.js",
       "ros-topic": "topic/ros-topic.js",
-      "ros-launch": "launch/ros-launch.js"
+      "ros-launch": "launch/ros-launch.js",
+      "ros-show-unmanaged": "ros-show/ros-show.js",
+      "ros-node-um": "unmanaged/node/ros-node-um.js"
     }
   },
   "dependencies": {
+    "axios": "^1.10.0",
     "is-web-api": "^1.0.1"
   }
 }
