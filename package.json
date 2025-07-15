@@ -8,7 +8,8 @@
       "ros-topic": "topic/ros-topic.js",
       "ros-launch": "launch/ros-launch.js",
       "ros-show-unmanaged": "ros-show/ros-show.js",
-      "ros-node-um": "unmanaged/node/ros-node-um.js"
+      "ros-node-um": "unmanaged/node/ros-node-um.js",
+      "manager-config": "manager-config/manager-config.js"
     }
   },
   "dependencies": {

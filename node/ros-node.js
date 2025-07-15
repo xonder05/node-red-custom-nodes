@@ -1,3 +1,5 @@
+const { isWeakMap } = require("util/types");
+
 module.exports = function(RED) 
 {
     var is_web_api = require("is-web-api").ros2;
@@ -7,7 +9,12 @@ module.exports = function(RED)
         const node = this;
 
         // slice only the node id without subflows
-        node.node_id = node.id.slice(node.id.lastIndexOf("-") + 1)
+        node.node_id = node.id.slice(node.id.lastIndexOf('-') + 1)
+
+        node.status({ fill: "black", shape: "dot", text: "Offline" });
+
+        // get corresponding manager config from enviroment
+        this.manager_config = RED.nodes.getNode(config.manager);
 
         // join commands topic
         const interface_path = get_interface_path("node_manager", "NodeRedCommand");
@@ -16,7 +23,8 @@ module.exports = function(RED)
 
         const topic_name = "management/commands";
         const message_type = "node_manager/NodeRedCommand";
-        let result = is_web_api.add_publisher(node.id, topic_name, message_type, []);
+        is_web_api.add_publisher(node.id, topic_name, message_type, []);
+        is_web_api.add_subscriber(node.id, topic_name, message_type, []);
 
         // join topic with node's stdout
         is_web_api.add_ros2_type("std_msgs", "String", []);
@@ -25,15 +33,46 @@ module.exports = function(RED)
         is_web_api.add_subscriber(config.id, "management/stdout/id_" + node.node_id, "std_msgs/String", []);
         node.log = "";
 
-        RED.events.once('flows:started', function() 
+        RED.events.once("flows:started", () =>
         {
-            let {color, message, event_emitter} = is_web_api.launch(config['id']);
+            let { event_emitter } = is_web_api.launch(config["id"]);
 
             if (event_emitter) 
             {
                 event_emitter.on("management/stdout/id_" + node.node_id + "_data", (msg_json) =>
                 {
                     node.log = node.log + msg_json.msg?.data + "\n";
+                });
+
+                event_emitter.on("management/commands_data", (msg) => 
+                {
+                    const res = msg.msg;
+                    const id = res.node_id.slice(3); // remove "id_" from the start
+                    
+                    // message for someone else
+                    if(id != node.node_id) 
+                    {
+                        console.log("Recieved command message for someone else, ignoring");
+                        return;
+                    }
+
+                    // only interested in response messages
+                    if(res.message_type != 90) 
+                    {
+                        console.log("Recievent message that is not response, ignoring");
+                        return;
+                    }
+
+                    // set node status based on the return value
+                    if([1, 2, 3].includes(res.return_value))
+                    {
+                        node.status({ fill: "green", shape: "dot", text: "Running" });
+                    }
+                    else
+                    {
+                        node.status({ fill: "red", shape: "dot", text: ("Error: " + node.return_value) });
+                    }
+
                 });
             }
 
@@ -43,7 +82,7 @@ module.exports = function(RED)
                                     config.param.split('\n')
                                                 .map(line => '\"' + line + '\"')
                                                 .join(',') 
-                                   + "]";
+                                   + ']';
 
 
                 const remap_json = '[' + 
@@ -53,16 +92,19 @@ module.exports = function(RED)
                                    + ']';
 
                 const msg = {
-                    manager_id: 1,
+                    manager_id: node.manager_config.manager_id,
                     message_type: 0, 
                     node_id: "id_" + node.node_id,
                     package_name: config.package, 
                     node_name: config.node, 
                     param_json: param_json,
-                    remap_json: remap_json
+                    remap_json: remap_json,
+                    return_value: 0
                 };
+
                 is_web_api.send_message("management/commands", msg);
-                node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
+                
+                node.status({ fill: "yellow", shape: "dot", text: "Requesting node start" });
             
             }, 5000);
         })
@@ -72,10 +114,11 @@ module.exports = function(RED)
             res.send(node.log);
         });
 
-        node.on('close', function(done) 
+        node.on("close", function(done) 
         {
             is_web_api.stop();
-            // node.status({ fill: "grey", shape: "dot", text: "" });
+            is_web_api.new_config();
+            node.status({ fill: "grey", shape: "dot", text: "Off" });
             done();
         });
     }

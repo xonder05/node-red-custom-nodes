@@ -3,6 +3,7 @@
         category: "ROS2",
         color: "#a6bbcf",
         defaults: {
+            manager: {value: "", type: "manager-config"},
             package: {value:""},
             node: {value:""},
             param: {value: ""},
@@ -67,12 +68,17 @@
 <script type="text/html" data-template-name="ros-node">
     
     <div class="form-row">
-        <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
+        <label for="node-input-manager"><i class="fa fa-bookmark"></i> Port</label>
+        <input type="text" id="node-input-manager">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-package"><i class="fa fa-tag"></i>Package</label>
         <select id="node-input-package" placeholder="Package"></select>
     </div>
 
     <div class="form-row">
-        <label for="node-input-node"><i class="fa fa-tag"></i> Node</label>
+        <label for="node-input-node"><i class="fa fa-tag"></i>Node</label>
         <select id="node-input-node" placeholder="Node"></select>
     </div>
 

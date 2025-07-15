@@ -1,0 +1,28 @@
+<script type="text/javascript">
+
+    RED.nodes.registerType('manager-config', {
+        category: "config",
+        defaults: {
+            dds_domain: {value: ""},
+            manager_id: {value: ""},
+        },
+        label: function() {
+            return "manager-config";
+        }
+
+    });
+</script>
+
+<script type="text/html" data-template-name="manager-config">
+    
+    <div class="form-row">
+        <label for="node-config-input-manager_id">Manager ID</label>
+        <input type="text" id="node-config-input-manager_id">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-config-input-dds_domain">DDS Domain</label>
+        <input type="number" id="node-config-input-dds_domain">
+    </div>
+
+</script>
