@@ -34,21 +34,28 @@ module.exports = function(RED)
                 event_emitter.on("management/stdout/id_" + node.node_id + "_data", (msg_json) =>
                 {
                     node.log = node.log + msg_json.msg?.data + "\n";
+
+                    RED.comms.publish("log", {
+                        id: node.id,
+                        log: node.log,
+                    }, true);
                 });
             }
 
+            node.status({ fill: "green", shape: "dot", text: "Showing unmanaged nodes" });
+
             setTimeout(() => 
             {
-                const msg = {
-                    manager_id: 1,
-                    node_id: "id_" + node.node_id,
-                    message_type: 2, 
-                    package_name: config.package, 
-                    node_name: config.node, 
-                    data: "whatever"
-                };
-                is_web_api.send_message("management/commands", msg);
-                node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
+                // const msg = {
+                //     manager_id: 1,
+                //     node_id: "id_" + node.node_id,
+                //     message_type: 2, 
+                //     package_name: config.package, 
+                //     node_name: config.node, 
+                //     data: "whatever"
+                // };
+                // is_web_api.send_message("management/commands", msg);
+                // node.status({ fill: "green", shape: "dot", text: "Deployed & Sent!" });
             
             }, 5000);
         })
@@ -114,4 +121,15 @@ module.exports = function(RED)
                 }
         });
     });
+
+    function get_interface_path(package, interface)
+    {
+        const { execSync } = require("child_process");
+
+        const package_name = package + "/msg/" + interface;
+        const cmd = `python3 -c "from rosidl_runtime_py import get_interface_path; print(get_interface_path('${package_name}'))"`;
+
+        const stdout = execSync(cmd, {encoding: "utf8"}); 
+        return stdout;
+    }
 }
