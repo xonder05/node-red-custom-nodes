@@ -30,6 +30,11 @@ module.exports = function(RED)
                 event_emitter.on(config.topic + "_data", (msg_json) =>
                 {
                     node.log = node.log + msg_json.msg?.data + "\n";
+
+                    RED.comms.publish("log", {
+                        id: node.id,
+                        log: node.log,
+                    }, true);
                 });
             }
 
@@ -108,4 +113,14 @@ module.exports = function(RED)
         const stdout = execSync(cmd, {encoding: "utf8"}); 
         return stdout;
     }
+
+    RED.httpAdmin.get("/global-js/*", function(req, res)
+    {
+        var options = {
+            root: __dirname + "/../global/",
+            dotfiles: 'deny'
+        };
+
+        res.sendFile(req.params[0], options);
+    });
 }

@@ -1,7 +1,8 @@
 <script type="text/javascript">
+
     RED.nodes.registerType("ros-topic",{
         category: "ROS2",
-        color: "#a6bbcf",
+        color: "#C0DEED",
         defaults: {
             topic: {value:""},
             package: {value:""},
@@ -14,7 +15,6 @@
         label: function() {
             return this.name||"ros-topic";
         },
-
 
         oneditprepare: function () 
         {
@@ -64,7 +64,30 @@
         }
 
     });
+
+    RED.comms.subscribe("log", function (event, log) 
+    {
+        try 
+        {
+            update_log(log.id, log.log);
+        } 
+        catch (e) 
+        {
+            if (e instanceof TypeError) 
+            {
+                show_log_button(log.id);
+            } 
+            else 
+            {
+                throw e;
+            }
+        }
+    })
+
 </script>
+
+<!-- code for showing logs above node -->
+<script type="text/javascript" src="/global-js/log.js"></script>
 
 <script type="text/html" data-template-name="ros-topic">
     
