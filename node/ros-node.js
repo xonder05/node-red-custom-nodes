@@ -1,5 +1,3 @@
-const { isWeakMap } = require("util/types");
-
 module.exports = function(RED) 
 {
     var is_web_api = require("is-web-api").ros2;
@@ -16,35 +14,43 @@ module.exports = function(RED)
         // get corresponding manager config from enviroment
         this.manager_config = RED.nodes.getNode(config.manager);
 
-        // join commands topic
-        const interface_path = get_interface_path("node_manager", "NodeRedCommand");
-        const folder_path = interface_path.slice(0, interface_path.lastIndexOf("/"));
-        is_web_api.add_custom_ros2_type("node_manager", "NodeRedCommand", folder_path);
+        RED.events.on("is-restart", register_is);
 
-        const topic_name = "management/commands";
-        const message_type = "node_manager/NodeRedCommand";
-        is_web_api.add_publisher(node.id, topic_name, message_type, []);
-        is_web_api.add_subscriber(node.id, topic_name, message_type, []);
-
-        // join topic with node's stdout
-        is_web_api.add_ros2_type("std_msgs", "String", []);
-
-        // subsribe
-        is_web_api.add_subscriber(config.id, "management/stdout/id_" + node.node_id, "std_msgs/String", []);
         node.log = "";
 
-        RED.events.once("flows:started", () =>
+        function register_is()
         {
-            let { event_emitter } = is_web_api.launch(config["id"]);
+            // join commands topic
+            const interface_path = get_interface_path("node_manager", "NodeRedCommand");
+            const folder_path = interface_path.slice(0, interface_path.lastIndexOf("/"));
+            is_web_api.add_custom_ros2_type("node_manager", "NodeRedCommand", folder_path);
 
-            if (event_emitter) 
+            const topic_name = "management/commands";
+            const message_type = "node_manager/NodeRedCommand";
+            is_web_api.add_publisher(node.id, topic_name, message_type, []);
+            is_web_api.add_subscriber(node.id, topic_name, message_type, []);
+
+            // join topic with node's stdout
+            is_web_api.add_ros2_type("std_msgs", "String", []);
+
+            // subsribe
+            is_web_api.add_subscriber(config.id, "management/stdout/id_" + node.node_id, "std_msgs/String", []);
+
+            node.event_emitter = is_web_api.get_event_emitter();
+
+            if (node.event_emitter) 
             {
-                event_emitter.on("management/stdout/id_" + node.node_id + "_data", (msg_json) =>
+                node.event_emitter.on("management/stdout/id_" + node.node_id + "_data", (msg_json) =>
                 {
                     node.log = node.log + msg_json.msg?.data + "\n";
+
+                    RED.comms.publish("log", {
+                        id: node.id,
+                        log: node.log,
+                    }, true);
                 });
 
-                event_emitter.on("management/commands_data", (msg) => 
+                node.event_emitter.on("management/commands_data", (msg) => 
                 {
                     const res = msg.msg;
                     const id = res.node_id.slice(3); // remove "id_" from the start
@@ -76,6 +82,17 @@ module.exports = function(RED)
                 });
             }
 
+        }
+
+        RED.events.once("flows:started", () =>
+        {
+            is_web_api.new_config();
+            is_web_api.stop();
+
+            RED.events.emit("is-restart", { msg: "" });
+
+            is_web_api.launch(config["id"]);
+            
             setTimeout(() => 
             {
                 const param_json = '[' + 
@@ -88,12 +105,12 @@ module.exports = function(RED)
                 const remap_json = '[' + 
                                     config.remap.split('\n')
                                                 .map(line => '\"' + line + '\"')
-                                                .join(',');
+                                                .join(',')
                                    + ']';
 
                 const msg = {
                     manager_id: node.manager_config.manager_id,
-                    message_type: 0, 
+                    message_type: 10, 
                     node_id: "id_" + node.node_id,
                     package_name: config.package, 
                     node_name: config.node, 
@@ -109,17 +126,61 @@ module.exports = function(RED)
             }, 5000);
         })
 
-        RED.httpAdmin.get("/ros-node/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
-        {
-            res.send(node.log);
-        });
-
         node.on("close", function(done) 
         {
-            is_web_api.stop();
-            is_web_api.new_config();
-            node.status({ fill: "grey", shape: "dot", text: "Off" });
-            done();
+            const msg = {
+                manager_id: node.manager_config.manager_id,
+                message_type: 50,
+                node_id: "id_" + node.node_id,
+                package_name: config.package, 
+                node_name: config.node, 
+                param_json: "{}",
+                remap_json: "{}",
+                return_value: 0
+            };
+            is_web_api.send_message("management/commands", msg);
+
+            node.event_emitter = is_web_api.get_event_emitter();
+
+            node.event_emitter.on("management/commands_data", (msg) => 
+            {
+                const res = msg.msg;
+                const id = res.node_id.slice(3); // remove "id_" from the start
+                
+                // message for someone else
+                if(id != node.node_id) 
+                {
+                    console.log("Recieved command message for someone else, ignoring");
+                    return;
+                }
+
+                // only interested in response messages
+                if(res.message_type != 90) 
+                {
+                    console.log("Recievent message that is not response, ignoring");
+                    return;
+                }
+
+                // set node status based on the return value
+                if([5].includes(res.return_value))
+                {
+                    RED.events.off("is-restart", register_is);
+
+                    is_web_api.new_config();
+                    is_web_api.stop();
+                    
+                    RED.events.emit("is-restart", { msg: "" });
+
+                    is_web_api.launch(config[id]);
+
+                    node.status({ fill: "grey", shape: "dot", text: "Off" });
+                    done();
+                }
+                else
+                {
+                    // error stopping, todo handle gracefully
+                }
+            });
         });
     }
 
@@ -181,4 +242,15 @@ module.exports = function(RED)
         const stdout = execSync(cmd, {encoding: "utf8"}); 
         return stdout;
     }
+
+    RED.httpAdmin.get("/global-js/*", function(req, res)
+    {
+        var options = {
+            root: __dirname + "/../global/",
+            dotfiles: 'deny'
+        };
+
+        res.sendFile(req.params[0], options);
+    });
+
 }

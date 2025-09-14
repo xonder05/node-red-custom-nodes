@@ -4,15 +4,16 @@
         category: "ROS2",
         color: "#E2D96E",
         defaults: {
+            manager: {value: "", type: "manager-config"},
             package: {value: ""},
-            launch: {value: ""},
-            log: {value: ""}
+            launch_name: {value: ""},
+            launch_content: {value: ""}
         },
-        inputs: 1,
+        inputs: 0,
         outputs: 1,
         icon: "file.png",
         label: function () {
-            return this.name || "ros-launch";
+            return this.launch_name || "ros-launch";
         },
 
         oneditprepare: function () 
@@ -35,16 +36,16 @@
             });
 
             // on package change update nodes list
+            const launch_select = $("#node-input-launch_name");
             package_select.on("change", () => 
             {
-                const launch_select = $("#node-input-launch");
                 const selected_package = package_select.val() ? package_select.val() : this.package;
 
                 $.getJSON(`ros-launch/list-launch?package=${encodeURIComponent(selected_package)}`, (launch_list) => 
                 {
                     console.log("got response");
                     console.log(launch_list);
-                    const selected_launch = this.launch;
+                    const selected_launch = this.launch_name;
 
                     launch_select.empty();
                     launch_list.forEach(item => 
@@ -58,33 +59,63 @@
                 });
             });
 
-            // topic listener update
-            $.get("ros-launch/get-log", (log) =>
+            launch_select.on("change", () => 
             {
-                $("#node-input-log").val(log);
+                const launch_content = $("#node-input-launch_content");
+                const selected_package = package_select.val() ? package_select.val() : this.package;
+                const selected_launch_file_name = launch_select.val() ? launch_select.val() : this.launch_name;
+
+                $.getJSON(`ros-launch/get-full-launch-path?package_name=${encodeURIComponent(selected_package)}&launch_file_name=${selected_launch_file_name}`, (json) => 
+                {
+                    const file_content = JSON.parse(json) 
+                    launch_content.val(file_content);
+                });
             });
         }
 
     });
     
+    RED.comms.subscribe("log", function (event, log) 
+    {
+        try 
+        {
+            update_log(log.id, log.log);
+        } 
+        catch (e) 
+        {
+            if (e instanceof TypeError) 
+            {
+                show_log_button(log.id, "/ros-launch/get-log");
+            } 
+            else 
+            {
+                throw e;
+            }
+        }
+    })
+
 </script>
 
 <script type="text/html" data-template-name="ros-launch">
     
+    <div class="form-row">
+        <label for="node-input-manager"><i class="fa fa-bookmark"></i> Port</label>
+        <input type="text" id="node-input-manager">
+    </div>
+
     <div class="form-row">
         <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
         <select id="node-input-package" placeholder="Package"></select>
     </div>
 
     <div class="form-row">
-        <label for="node-input-launch"><i class="fa fa-tag"></i>Launch</label>
-        <select id="node-input-launch" placeholder="Launch"></select>
+        <label for="node-input-launch_name"><i class="fa fa-tag"></i>Launch</label>
+        <select id="node-input-launch_name" placeholder="Launch"></select>
     </div>
 
     <div class="form-row">
-        <label>Logs</label>
-        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
-        </textarea>
+        <label for="node-input-launch_content"><i class="fa fa-tag"></i>Launch</label>
+        <textarea id="node-input-launch_content"></textarea>
     </div>
 
 </script>

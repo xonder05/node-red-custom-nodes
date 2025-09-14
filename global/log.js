@@ -1,4 +1,4 @@
-function show_log_button(id)
+function show_log_button(id, log_endpoint)
 {
     // find the node on the canvas
     const node_svg = document.getElementById(id);
@@ -30,7 +30,8 @@ function show_log_button(id)
     group.addEventListener("click", () => 
     {
         remove_log_button(id);
-        show_log_window(id);
+        show_log_window(id, log_endpoint);
+        update_log_from_backend(id, log_endpoint);
     });
 
     group.appendChild(btn);
@@ -45,7 +46,7 @@ function remove_log_button(id)
     if (old) old.remove();
 }
 
-function show_log_window(id)
+function show_log_window(id, log_endpoint)
 {
     // find the node on the canvas
     const node_svg = document.getElementById(id);
@@ -95,7 +96,7 @@ function show_log_window(id)
     close_btn.addEventListener("click", e => 
     {
         remove_log_window(id);
-        show_log_button(id);
+        show_log_button(id, log_endpoint);
     });
 
     // height resize dragable button
@@ -216,7 +217,7 @@ function show_log_window(id)
     node_svg.insertBefore(foreign_object, node_svg.firstChild);
 
 }
-    
+
 function remove_log_window(id)
 {
     const old = document.getElementById("node_" + id + "_log_window");
@@ -228,4 +229,14 @@ function update_log(id, log)
     const log_div = document.getElementById("node_" + id + "_log_div");
     log_div.textContent = log;
     log_div.scrollTop = log_div.scrollHeight;
+}
+
+function update_log_from_backend(id, endpoint)
+{
+    $.get(endpoint, (log) =>
+    {
+        const log_div = document.getElementById("node_" + id + "_log_div");
+        log_div.textContent = log;
+        log_div.scrollTop = log_div.scrollHeight;
+    });
 }

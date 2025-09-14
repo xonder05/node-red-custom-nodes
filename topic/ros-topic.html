@@ -7,9 +7,8 @@
             topic: {value:""},
             package: {value:""},
             interface: {value:""},
-            log: {value: ""}
         },
-        inputs: 1,
+        inputs: 0,
         outputs: 1,
         icon: "file.svg",
         label: function() {
@@ -55,12 +54,6 @@
                     });
                 });
             });
-
-            // topic listener update
-            $.get("ros-topic/get-log", (log) =>
-            {
-                $("#node-input-log").val(log);
-            });
         }
 
     });
@@ -104,12 +97,6 @@
     <div class="form-row">
         <label for="node-input-interface"><i class="fa fa-tag"></i> Node</label>
         <select id="node-input-interface" placeholder="Interface"></select>
-    </div>
-
-    <div class="form-row">
-        <label>Logs</label>
-        <textarea readonly id="node-input-log" style="width: 100%; height: 200px;">
-        </textarea>
     </div>
 
 </script>

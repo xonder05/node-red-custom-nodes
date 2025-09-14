@@ -22,7 +22,7 @@ module.exports = function(RED)
         // triggers once every node has completed its construction
         RED.events.once("flows:started", function() 
         {
-            let {color, message, event_emitter} = is_web_api.launch(config["id"]);
+            let {event_emitter} = is_web_api.launch(config["id"]);
 
             // ros2 input
             if (event_emitter)
@@ -38,11 +38,6 @@ module.exports = function(RED)
                 });
             }
 
-        });
-
-        RED.httpAdmin.get("/ros-topic/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
-        {
-            res.send(node.log);
         });
 
         node.on("close", function(done) 
@@ -101,6 +96,11 @@ module.exports = function(RED)
                 res.status(500).json({ error: "Invalid JSON output" });
             }
         });
+    });
+
+    RED.httpAdmin.get("/ros-topic/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
+    {
+        res.send(node.log);
     });
 
     function get_interface_path(package, interface)
