@@ -1,3 +1,11 @@
+<script> /**
+ * @file ros-launch.html
+ * @author Daniel Onderka (xonder05)
+ * @date 10/2025
+ */ </script>
+
+<script type="text/javascript" src="/global/log.js"></script>
+
 <script type="text/javascript">
 
     RED.nodes.registerType("ros-launch", {
@@ -7,7 +15,8 @@
             manager: {value: "", type: "manager-config"},
             package: {value: ""},
             launch_name: {value: ""},
-            launch_content: {value: ""}
+            launch_args: {value: {}},
+            launch_content: {value: ""},
         },
         inputs: 0,
         outputs: 1,
@@ -16,84 +25,137 @@
             return this.launch_name || "ros-launch";
         },
 
-        oneditprepare: function () 
+        oneditprepare: async function () 
         {
-            // package select menu
-            const package_select = $("#node-input-package");
-            $.getJSON("ros-launch/list_packages", (packages_list) => 
-            {
-                // make sure to not erase previously selected value
-                const selected_package = this.package;
+            const node = this;
 
-                package_select.empty();
-                packages_list.forEach(item => 
+            const package_dropdown = $("#node-input-package");
+            const launch_file_dropdown = $("#node-input-launch_name");
+            const launch_file_content_dropdown = $("#node-input-launch_content");
+
+            async function populate_package_dropdown()
+            {
+                // clear whatever used to be there
+                package_dropdown.empty();
+
+                // previously selected value
+                const selected_package = node.package;
+
+                // list of available packages
+                const packages_list = await $.getJSON("ros-launch/list_packages");
+
+                for (const package of packages_list)
                 {
-                    const selected = (item === selected_package) ? "selected" : "";
-                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
-                });
-                
-                package_select.trigger("change");
+                    const selected = (package === selected_package) ? "selected" : "";
+                    package_dropdown.append(`<option value="${package}" ${selected}>${package}</option>`);
+                }
+            }
+
+            async function populate_launch_file_dropdown()
+            {
+                const selected_package = package_dropdown.val() ? package_dropdown.val() : node.package;
+
+                launch_file_dropdown.empty();
+
+                const selected_launch = node.launch_name;
+
+                const launch_file_list = await $.getJSON(`ros-launch/list-launch?package=${encodeURIComponent(selected_package)}`);
+
+                for (const launch_file of launch_file_list)
+                {
+                    const selected = (launch_file === selected_launch) ? "selected" : "";
+                    launch_file_dropdown.append(`<option value="${launch_file}" ${selected}>${launch_file}</option>`);
+                }
+            }
+
+            async function populate_launch_file_contents()
+            {
+                const selected_package = package_dropdown.val() ? package_dropdown.val() : node.package;
+                const selected_launch_file_name = launch_file_dropdown.val() ? launch_file_dropdown.val() : node.launch_name;
+
+                const launch_file_path = await $.getJSON(`ros-launch/get-full-launch-path?package_name=${encodeURIComponent(selected_package)}&launch_file_name=${selected_launch_file_name}`);
+                const launch_file_content = await $.getJSON(`/ros-launch/get-file-content?file_path=${encodeURIComponent(launch_file_path)}`);
+
+                launch_file_content_dropdown.val(launch_file_content);
+            }
+
+            $('#node-input-args_container').css('min-height','120px').css('min-width','450px').editableList(
+            {
+                addItem: function(container, i, opt)
+                {
+                    const arg = opt || {name: "", value: ""};
+
+                    const row = $('<div/>')
+                        .css({display: "flex", gap: "6px", alignItems: "center"})
+                        .appendTo(container);
+
+                    const key_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-arg-name",
+                        placeholder: "key"
+                    }).css({flex: "1"}).appendTo(row).val(arg.name);
+
+                    const value_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-arg-value",
+                        placeholder: "val"
+                    }).css({flex: "1"}).appendTo(row).val(arg.value);
+                    
+                },
+                removable: true,
             });
 
-            // on package change update nodes list
-            const launch_select = $("#node-input-launch_name");
-            package_select.on("change", () => 
+            async function populate_arguments_editable_list()
             {
-                const selected_package = package_select.val() ? package_select.val() : this.package;
+                const selected_package = package_dropdown.val() ? package_dropdown.val() : node.package;
+                const selected_launch_file_name = launch_file_dropdown.val() ? launch_file_dropdown.val() : node.launch_name;
 
-                $.getJSON(`ros-launch/list-launch?package=${encodeURIComponent(selected_package)}`, (launch_list) => 
+                const launch_file_path = await $.getJSON(`ros-launch/get-full-launch-path?package_name=${encodeURIComponent(selected_package)}&launch_file_name=${selected_launch_file_name}`);
+
+                const arguemnts_dict = await $.getJSON(`ros-launch/get-arguments?launch_file_path=${encodeURIComponent(launch_file_path)}`);
+
+                $("#node-input-args_container").editableList('empty');
+                for(const [arg, def] of Object.entries(arguemnts_dict))
                 {
-                    console.log("got response");
-                    console.log(launch_list);
-                    const selected_launch = this.launch_name;
+                    const value = node.launch_args[arg];
 
-                    launch_select.empty();
-                    launch_list.forEach(item => 
-                    {
-                        const selected = (item === selected_launch) ? "selected" : "";
-                        console.log("appending");
-                        console.log(item);
-                        launch_select.append(`<option value="${item}" ${selected}>${item}</option>`);
-                    });
-                    console.log("done");
-                });
-            });
+                    if (value) {
+                        $("#node-input-args_container").editableList('addItem', {name: arg, value: value});
+                    }
+                    else {
+                        $("#node-input-args_container").editableList('addItem', {name: arg, value: def});
+                    }
+                }
+            }
 
-            launch_select.on("change", () => 
+            package_dropdown.on("change", populate_launch_file_dropdown);
+
+            launch_file_dropdown.on("change", populate_launch_file_contents);
+
+            launch_file_dropdown.on("change", populate_arguments_editable_list);
+        
+            await populate_package_dropdown();
+        },
+
+        oneditsave: function()
+        {
+            const node = this;
+
+            const args = $("#node-input-args_container").editableList('items');
+            node.launch_args = {};
+
+            for (row of args)
             {
-                const launch_content = $("#node-input-launch_content");
-                const selected_package = package_select.val() ? package_select.val() : this.package;
-                const selected_launch_file_name = launch_select.val() ? launch_select.val() : this.launch_name;
+                const name = row.find('.node-input-arg-name').val();
+                const value = row.find('.node-input-arg-value').val();
 
-                $.getJSON(`ros-launch/get-full-launch-path?package_name=${encodeURIComponent(selected_package)}&launch_file_name=${selected_launch_file_name}`, (json) => 
-                {
-                    const file_content = JSON.parse(json) 
-                    launch_content.val(file_content);
-                });
-            });
-        }
-
+                if (name) {
+                    node.launch_args[name] = value;
+                }
+            }
+        },
     });
     
-    RED.comms.subscribe("log", function (event, log) 
-    {
-        try 
-        {
-            update_log(log.id, log.log);
-        } 
-        catch (e) 
-        {
-            if (e instanceof TypeError) 
-            {
-                show_log_button(log.id, "/ros-launch/get-log");
-            } 
-            else 
-            {
-                throw e;
-            }
-        }
-    })
-
 </script>
 
 <script type="text/html" data-template-name="ros-launch">
@@ -116,6 +178,11 @@
     <div class="form-row">
         <label for="node-input-launch_content"><i class="fa fa-tag"></i>Launch</label>
         <textarea id="node-input-launch_content"></textarea>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-args_container"><i class="fa fa-bars"></i>Arguments</label>
+        <ol id="node-input-args_container"></ol>
     </div>
 
 </script>

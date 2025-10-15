@@ -1,4 +1,13 @@
+<script> /**
+ * @file ros-node.html
+ * @author Daniel Onderka (xonder05)
+ * @date 10/2025
+ */ </script>
+
+<script type="text/javascript" src="/global/log.js"></script>
+
 <script type="text/javascript">
+
     RED.nodes.registerType("ros-node",{
         category: "ROS2",
         color: "#F3B567",
@@ -6,8 +15,8 @@
             manager: {value: "", type: "manager-config"},
             package: {value:""},
             node: {value:""},
-            param: {value: ""},
-            remap: {value: ""},
+            params: {value: {}},
+            remaps: {value: {}},
         },
         inputs: 0,
         outputs: 1,
@@ -16,66 +25,146 @@
             return this.node || "ros-node";
         },
 
-        oneditprepare: function () 
+        oneditprepare: async function () 
         {
-            // package select menu
-            const package_select = $("#node-input-package");
-            $.getJSON("ros-node/list_packages", (packages_list) => 
+            const node = this;
+
+            const package_dropdown = $("#node-input-package");
+            const node_select = $("#node-input-node");
+
+            async function populate_package_dropdown() 
             {
+                package_dropdown.empty();
+
                 // make sure to not erase previously selected value
                 const selected_package = this.package;
 
-                package_select.empty();
-                packages_list.forEach(item => 
+                const packages_list = await $.getJSON("ros-node/list_packages");
+
+                for (const package of packages_list)
                 {
-                    const selected = (item === selected_package) ? "selected" : "";
-                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
-                });
-                
-                package_select.trigger("change");
+                    const selected = (package === selected_package) ? "selected" : "";
+                    package_dropdown.append(`<option value="${package}" ${selected}>${package}</option>`);
+                }
+            }
+
+            async function populate_node_dropdown(params) 
+            {
+                const selected_package = package_dropdown.val() ? package_dropdown.val() : this.package;
+
+                node_select.empty();
+
+                const selected_node = this.node;
+
+                const node_list = await $.getJSON(`ros-node/list_nodes?package=${encodeURIComponent(selected_package)}`);
+
+                for (const node of node_list) 
+                {
+                    const selected = (node === selected_node) ? "selected" : "";
+                    node_select.append(`<option value="${node}" ${selected}>${node}</option>`);
+                }
+            }
+
+            $('#node-input-params_container').css('min-height','120px').css('min-width','450px').editableList(
+            {
+                addItem: function(container, i, opt)
+                {
+                    const param = opt || {name: "", value: ""};
+
+                    const row = $('<div/>')
+                        .css({display: "flex", gap: "6px", alignItems: "center"})
+                        .appendTo(container);
+
+                    const key_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-param-name",
+                        placeholder: "key"
+                    }).css({flex: "1"}).appendTo(row).val(param.name);
+
+                    const value_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-param-value",
+                        placeholder: "val"
+                    }).css({flex: "1"}).appendTo(row).val(param.value);
+                    
+                },
+                removable: true,
+            });
+
+            $('#node-input-remaps_container').css('min-height','120px').css('min-width','450px').editableList(
+            {
+                addItem: function(container, i, opt)
+                {
+                    const remap = opt || {t1: "", t2: ""};
+
+                    const row = $('<div/>')
+                        .css({display: "flex", gap: "6px", alignItems: "center"})
+                        .appendTo(container);
+
+                    const key_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-remap-t1",
+                        placeholder: "key"
+                    }).css({flex: "1"}).appendTo(row).val(remap.t1);
+
+                    const value_input = $("<input/>", {
+                        type: "text",
+                        class: "node-input-remap-t2",
+                        placeholder: "val"
+                    }).css({flex: "1"}).appendTo(row).val(remap.t2);
+                    
+                },
+                removable: true,
             });
 
             // on package change update nodes list
-            package_select.on("change", () => 
+            package_dropdown.on("change", populate_node_dropdown);
+
+            await populate_package_dropdown();
+
+            for(const [name, value] of Object.entries(node.params))
             {
-                const node_select = $("#node-input-node");
-                const selected_package = package_select.val() ? package_select.val() : this.package;
+                $("#node-input-params_container").editableList('addItem', {name: name, value: value});
+            }
 
-                $.getJSON(`ros-node/list_nodes?package=${encodeURIComponent(selected_package)}`, (nodes_list) => 
-                {
-                    const selected_node = this.node;
+            for(const [t1, t2] of Object.entries(node.remaps))
+            {
+                $("#node-input-remaps_container").editableList('addItem', {t1: t1, t2: t2});
+            }  
+        },
 
-                    node_select.empty();
-                    nodes_list.forEach(item => 
-                    {
-                        const selected = (item === selected_node) ? "selected" : "";
-                        node_select.append(`<option value="${item}" ${selected}>${item}</option>`);
-                    });
-                });
-            });
+        oneditsave: function()
+        {
+            const node = this;
 
+            const params = $("#node-input-params_container").editableList('items');
+            node.params = {};
+
+            for (row of params)
+            {
+                const name = row.find('.node-input-param-name').val();
+                const value = row.find('.node-input-param-value').val();
+
+                if (name) {
+                    node.params[name] = value;
+                }
+            }
+
+            const remaps = $("#node-input-remaps_container").editableList('items');
+            node.remaps = {};
+
+            for (row of remaps)
+            {
+                const t1 = row.find('.node-input-remap-t1').val();
+                const t2 = row.find('.node-input-remap-t2').val();
+
+                if (t1) {
+                    node.remaps[t1] = t2;
+                }
+            }
         },
 
     });
-
-    RED.comms.subscribe("log", function (event, log) 
-    {
-        try
-        {
-            update_log(log.id, log.log);
-        } 
-        catch (e) 
-        {
-            if (e instanceof TypeError) 
-            {
-                show_log_button(log.id);
-            } 
-            else 
-            {
-                throw e;
-            }
-        }
-    })
 
 </script>
 
@@ -97,15 +186,13 @@
     </div>
 
     <div class="form-row">
-        <label for="node-input-param">Params</label>
-        <textarea id="node-input-param" style="width: 100%; height: 200px;">
-        </textarea>
+        <label for="node-input-params_container"><i class="fa fa-bars"></i>Params</label>
+        <ol id="node-input-params_container"></ol>
     </div>
 
     <div class="form-row">
-        <label for="node-input-remap">Remaps</label>
-        <textarea id="node-input-remap" style="width: 100%; height: 200px;">
-        </textarea>
+        <label for="node-input-remaps_container"><i class="fa fa-bars"></i>Remaps</label>
+        <ol id="node-input-remaps_container"></ol>
     </div>
 
 </script>

@@ -1,3 +1,41 @@
+/**
+ * @file log.js
+ * 
+ * @brief Shows resizable console like window next to each node directly in the editor
+ * 
+ * use by including this file directly in .html part of the node 
+ * and then in .js part publish what you want to display via             
+ * RED.comms.publish("log", { id: node.id, log: node.log }, true);
+ * 
+ * @author Daniel Onderka (xonder05)
+ * @date 10/2025
+ */
+
+if (!window.log_setup_complete)
+{
+    window.log_setup_complete = true;
+
+    RED.comms.subscribe("log", function (event, log) 
+    {
+        // debugger;
+        try 
+        {
+            console.log(log);
+            update_log(log.id, log.log);
+        } 
+        catch (e) 
+        {
+            if (e instanceof TypeError) 
+            {
+                show_log_button(log.id, "/ros-launch/get-log");
+            } 
+            else 
+            {
+                throw e;
+            }
+        }
+    })
+
 function show_log_button(id, log_endpoint)
 {
     // find the node on the canvas
@@ -240,3 +278,6 @@ function update_log_from_backend(id, endpoint)
         log_div.scrollTop = log_div.scrollHeight;
     });
 }
+
+}
+
