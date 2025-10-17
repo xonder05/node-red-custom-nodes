@@ -17,26 +17,21 @@ if (!window.log_setup_complete)
 
     RED.comms.subscribe("log", function (event, log) 
     {
-        // debugger;
-        try 
-        {
-            console.log(log);
+        try {
             update_log(log.id, log.log);
         } 
-        catch (e) 
-        {
-            if (e instanceof TypeError) 
-            {
-                show_log_button(log.id, "/ros-launch/get-log");
-            } 
-            else 
-            {
+        catch (e) {
+            if (e instanceof TypeError) {
+                show_log_button(log.id);
+            }
+            else {
                 throw e;
             }
         }
     })
+}
 
-function show_log_button(id, log_endpoint)
+function show_log_button(id)
 {
     // find the node on the canvas
     const node_svg = document.getElementById(id);
@@ -68,8 +63,8 @@ function show_log_button(id, log_endpoint)
     group.addEventListener("click", () => 
     {
         remove_log_button(id);
-        show_log_window(id, log_endpoint);
-        update_log_from_backend(id, log_endpoint);
+        show_log_window(id);
+        update_log_from_backend(id);
     });
 
     group.appendChild(btn);
@@ -84,7 +79,7 @@ function remove_log_button(id)
     if (old) old.remove();
 }
 
-function show_log_window(id, log_endpoint)
+function show_log_window(id)
 {
     // find the node on the canvas
     const node_svg = document.getElementById(id);
@@ -134,7 +129,7 @@ function show_log_window(id, log_endpoint)
     close_btn.addEventListener("click", e => 
     {
         remove_log_window(id);
-        show_log_button(id, log_endpoint);
+        show_log_button(id);
     });
 
     // height resize dragable button
@@ -253,7 +248,6 @@ function show_log_window(id, log_endpoint)
 
     foreign_object.appendChild(div);
     node_svg.insertBefore(foreign_object, node_svg.firstChild);
-
 }
 
 function remove_log_window(id)
@@ -269,15 +263,13 @@ function update_log(id, log)
     log_div.scrollTop = log_div.scrollHeight;
 }
 
-function update_log_from_backend(id, endpoint)
+function update_log_from_backend(id)
 {
-    $.get(endpoint, (log) =>
+    $.get(`/get-log?id=${id}`, (log) =>
     {
         const log_div = document.getElementById("node_" + id + "_log_div");
         log_div.textContent = log;
         log_div.scrollTop = log_div.scrollHeight;
     });
-}
-
 }
 

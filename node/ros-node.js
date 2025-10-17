@@ -17,6 +17,7 @@ module.exports = function(RED)
         {
             // slice only the node id without subflows
             node.node_id = node.id.slice(node.id.lastIndexOf('-') + 1)
+            node.log = "";
 
             // get corresponding manager config from enviroment
             node.manager_config = RED.nodes.getNode(config.manager);
@@ -27,12 +28,6 @@ module.exports = function(RED)
             register_is();
 
             RED.events.once("flows:started", flow_started_event_handler);
-            node.on("close", close_event_handler);
-
-            node.log = "";
-            RED.httpAdmin.get("/ros-node/get-log", RED.auth.needsPermission("ros-topic.read"), function (req, res) 
-            {
-                res.send(node.log);
             });
         }
 
@@ -299,6 +294,23 @@ module.exports = function(RED)
                 }
         });
     });
+
+    if(!global.log_setup_complete)
+    {
+        global.log_setup_complete = true;
+
+        RED.httpAdmin.get("/get-log", RED.auth.needsPermission("ros-launch.read"), function (req, res) 
+        {
+            const node = RED.nodes.getNode(req.query.id);
+
+            if (node) {
+                res.send(node.log);
+            }
+            else {
+                res.status(404).json({ error: "Node not found" });
+            }
+        });
+    }
 
     function get_interface_path(package, interface)
     {
