@@ -28,7 +28,7 @@ module.exports = function(RED)
             register_is();
 
             RED.events.once("flows:started", flow_started_event_handler);
-            });
+            node.on("close", close_event_handler);
         }
 
         function flow_started_event_handler()

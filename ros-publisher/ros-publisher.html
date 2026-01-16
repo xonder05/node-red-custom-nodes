@@ -1,0 +1,90 @@
+<script> /**
+ * @file ros-publisher.html
+ * @author Daniel Onderka (xonder05)
+ * @date 01/2026
+ */ </script>
+
+<script type="text/javascript">
+
+    RED.nodes.registerType("ros-publisher",{
+        category: "ROS2",
+        color: "#C0DEED",
+        defaults: {
+            topic: {value:""},
+            package: {value:""},
+            interface: {value:""},
+        },
+        inputs: 1,
+        outputs: 0,
+        icon: "file.svg",
+        label: function() {
+            return this.name||"ros-publisher";
+        },
+
+        oneditprepare: function () 
+        {
+            // package select menu
+            const package_select = $("#node-input-package");
+            $.getJSON("ros-publisher/list-packages", (packages_list) => 
+            {
+                // make sure to not erase previously selected value
+                const selected_package = this.package;
+
+                package_select.empty();
+                packages_list.forEach(item => 
+                {
+                    const selected = (item === selected_package) ? "selected" : "";
+                    package_select.append(`<option value="${item}" ${selected}>${item}</option>`);
+                });
+                
+                package_select.trigger("change");
+            });
+
+            // on package change update intefaces list
+            package_select.on("change", () => 
+            {
+                const interface_select = $("#node-input-interface");
+                const selected_package = package_select.val() ? package_select.val() : this.package;
+
+                $.getJSON(`ros-publisher/list-interfaces?package=${encodeURIComponent(selected_package)}`, (interfaces_list) => 
+                {
+                    console.log(interfaces_list);
+
+                    const selected_interface = this.interface;
+
+                    interface_select.empty();
+                    interfaces_list.forEach(item => 
+                    {
+                        const selected = (item === selected_interface) ? "selected" : "";
+                        interface_select.append(`<option value="${item}" ${selected}>${item}</option>`);
+                    });
+                });
+            });
+        }
+
+    });
+
+</script>
+
+<script type="text/html" data-template-name="ros-publisher">
+    
+    <div class="form-row">
+        <label for="node-input-topic"><i class="fa fa-tag"></i> Package</label>
+        <input id="node-input-topic" type="text" placeholder="topic"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-package"><i class="fa fa-tag"></i> Package</label>
+        <select id="node-input-package" placeholder="Package"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-interface"><i class="fa fa-tag"></i> Node</label>
+        <select id="node-input-interface" placeholder="Interface"></select>
+    </div>
+
+</script>
+
+<script type="text/html" data-help-name="ros-publisher">
+    <p>Node description</p>
+</script>

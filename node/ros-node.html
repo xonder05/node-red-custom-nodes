@@ -7,7 +7,7 @@
 <script type="text/javascript" src="resources/node-red-custom-nodes/log.js"></script>
 
 <script type="text/javascript">
-
+    
     RED.nodes.registerType("ros-node",{
         category: "ROS2",
         color: "#F3B567",
@@ -37,7 +37,7 @@
                 package_dropdown.empty();
 
                 // make sure to not erase previously selected value
-                const selected_package = this.package;
+                const selected_package = node.package;
 
                 const packages_list = await $.getJSON("ros-node/list_packages");
 
@@ -50,11 +50,11 @@
 
             async function populate_node_dropdown(params) 
             {
-                const selected_package = package_dropdown.val() ? package_dropdown.val() : this.package;
+                const selected_package = package_dropdown.val() ? package_dropdown.val() : node.package;
 
                 node_select.empty();
 
-                const selected_node = this.node;
+                const selected_node = node.node;
 
                 const node_list = await $.getJSON(`ros-node/list_nodes?package=${encodeURIComponent(selected_package)}`);
 
