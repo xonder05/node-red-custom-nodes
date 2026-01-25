@@ -4,13 +4,13 @@
   "description": "",
   "node-red": {
     "nodes": {
-      "ros-node": "node/ros-node.js",
-      "ros-launch": "launch/ros-launch.js",
-      "ros-show-unmanaged": "ros-show/ros-show.js",
-      "ros-node-um": "unmanaged/node/ros-node-um.js",
-      "manager-config": "manager-config/manager-config.js",
-      "publisher": "ros-publisher/ros-publisher.js",
-      "subscriber": "ros-subscriber/ros-subscriber.js"
+      "ros-node": "nodes/node/ros-node.js",
+      "ros-launch": "nodes/launch/ros-launch.js",
+      "ros-show-unmanaged": "nodes/ros-show/ros-show.js",
+      "ros-node-um": "nodes/unmanaged/node/ros-node-um.js",
+      "manager-config": "nodes/manager-config/manager-config.js",
+      "publisher": "nodes/ros-publisher/ros-publisher.js",
+      "subscriber": "nodes/ros-subscriber/ros-subscriber.js"
     }
   },
   "dependencies": {
